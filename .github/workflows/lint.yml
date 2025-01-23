@@ -9,24 +9,24 @@ jobs:
     name: SwiftLint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@d632683dd7b4114ad314bca15554477dd762a938 # v4.2.0
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       - uses: norio-nomura/action-swiftlint@9f4dcd7fd46b4e75d7935cf2f4df406d5cae3684 # 3.2.1
         with:
           args: --strict
 
   check-license-headers:
     name: License Headers
-    runs-on: macos-13
+    runs-on: macos-latest
     steps:
-      - uses: actions/checkout@d632683dd7b4114ad314bca15554477dd762a938 # v4.2.0
-      - run: ./Scripts/copy_license && git diff --name-only --exit-code
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - run: ./Scripts/ensure_license
 
   lint-podspec:
     name: CocoaPods
     runs-on: macos-13
     steps:
-      - uses: actions/checkout@d632683dd7b4114ad314bca15554477dd762a938 # v4.2.0
-      - uses: ruby/setup-ruby@c04af2bb7258bb6a03df1d3c1865998ac9390972 # v1.194.0
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: ruby/setup-ruby@28c4deda893d5a96a6b2d958c5b47fc18d65c9d3 # v1.213.0
         with:
           bundler-cache: true
       - run: bundle exec pod lib lint --allow-warnings

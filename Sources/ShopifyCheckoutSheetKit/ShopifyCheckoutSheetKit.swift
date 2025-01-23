@@ -24,7 +24,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SO
 import UIKit
 
 /// The version of the `ShopifyCheckoutSheetKit` library.
-public let version = "3.0.4"
+public let version = "3.1.2"
 
 internal var invalidateOnConfigurationChange = true
 
@@ -50,6 +50,11 @@ public func preload(checkout url: URL) {
 
 	CheckoutWebView.preloadingActivatedByClient = true
 	CheckoutWebView.for(checkout: url).load(checkout: url, isPreload: true)
+}
+
+/// Invalidate the checkout cache from preload calls
+public func invalidate() {
+	CheckoutWebView.invalidate(disconnect: true)
 }
 
 /// Presents the checkout from a given `UIViewController`.

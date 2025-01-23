@@ -1,5 +1,20 @@
 # Changelog
 
+## 3.1.2 - November 6, 2024
+
+- Remove redundant code
+
+## 3.1.1 - October 18, 2024
+
+- Ignore "about:blank" URLs
+
+## 3.1.0 - October 16, 2024
+
+- Ignore cancelled redirects
+- Call `checkoutDidClickLink` for deep links
+- Prevent "recovery" retry flow for multipass URLs with one-time tokens
+- Expose `invalidate()` function to manually clear the webview (preload) cache
+
 ## 3.0.4 - August 7, 2024
 
 - Updates to reflect latest Web Pixel schema

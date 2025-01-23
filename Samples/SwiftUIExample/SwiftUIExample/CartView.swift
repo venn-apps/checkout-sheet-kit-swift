@@ -27,6 +27,7 @@ import ShopifyCheckoutSheetKit
 
 struct CartView: View {
 	@State var cartCompleted: Bool = false
+	@State var isBusy: Bool = false
 
 	@ObservedObject var cartManager: CartManager
 	@Binding var checkoutURL: URL? {
@@ -40,7 +41,7 @@ struct CartView: View {
 		if let lines = cartManager.cart?.lines.nodes {
 			ScrollView {
 				VStack {
-					CartLines(lines: lines)
+					CartLines(lines: lines, isBusy: $isBusy)
 				}
 
 				Spacer()
@@ -52,11 +53,12 @@ struct CartView: View {
 						Text("Checkout")
 							.padding()
 							.frame(maxWidth: .infinity)
-							.background(Color.blue)
+							.background(isBusy ? Color.gray : Color.blue)
 							.foregroundColor(.white)
 							.cornerRadius(10)
 							.bold()
 					})
+					.disabled(isBusy)
 					.accessibilityIdentifier("checkoutButton")
 					.sheet(isPresented: $isShowingCheckout) {
 						if let url = checkoutURL {
@@ -103,7 +105,15 @@ struct CartView: View {
 				}
 
 				Spacer()
-			}.padding(10)
+			}
+			.padding(10)
+			.onAppear(
+				perform: {
+					if let url = checkoutURL {
+						ShopifyCheckoutSheetKit.preload(checkout: url)
+					}
+				}
+			)
 		} else {
 			EmptyState()
 		}
@@ -126,6 +136,12 @@ struct EmptyState: View {
 
 struct CartLines: View {
 	var lines: [BaseCartLine]
+	@State var updating: GraphQL.ID? {
+		didSet {
+			isBusy = updating != nil
+		}
+	}
+	@Binding var isBusy: Bool
 
 	var body: some View {
 		ForEach(lines, id: \.id) { node in
@@ -136,10 +152,11 @@ struct CartLines: View {
 					AsyncImage(url: imageUrl) { image in
 						image.image?.resizable().aspectRatio(contentMode: .fit)
 					}
-					.frame(width: 60, height: 90)
+					.frame(width: 60, height: 120)
 				}
 
-				VStack(alignment: .leading, spacing: 1) {
+				VStack(alignment: .leading, spacing: 8
+) {
 					Text(variant?.product.title ?? "")
 						.font(.body)
 						.bold()
@@ -151,14 +168,99 @@ struct CartLines: View {
 						.foregroundColor(.blue)
 
 					if let price = variant?.price.formattedString() {
-						Text("\(price) - Quantity: \(node.quantity)")
-							.font(.caption)
-							.foregroundColor(.gray)
+						HStack(spacing: 80) {
+							Text("\(price)")
+								.foregroundColor(.gray)
+
+						HStack(spacing: 20) {
+								Button(action: {
+									/// Prevent multiple simulataneous calls
+									guard node.quantity > 1 && updating != node.id else {
+										return
+									}
+
+									updating = node.id
+
+									/// Invalidate the cart cache to ensure the correct item quantity is reflected on checkout
+									ShopifyCheckoutSheetKit.invalidate()
+
+									CartManager.shared.updateQuantity(variant: node.id, quantity: node.quantity - 1, completionHandler: { cart in
+										CartManager.shared.cart = cart
+										updating = nil
+
+										if let url = cart?.checkoutUrl {
+											ShopifyCheckoutSheetKit.preload(checkout: url)
+										}
+									})
+								}, label: {
+									HStack {
+										Text("-").font(.title2)
+									}.frame(width: 20)
+								})
+
+								VStack {
+									if updating == node.id {
+										ProgressView().progressViewStyle(CircularProgressViewStyle())
+										.scaleEffect(0.8)
+									} else {
+										HStack {
+											Text("\(node.quantity)")
+										}.frame(width: 20)
+									}
+								}.frame(width: 20)
+
+								Button(action: {
+									/// Prevent multiple simulataneous calls
+									guard updating != node.id else {
+										return
+									}
+
+									updating = node.id
+
+									/// Invalidate the cart cache to ensure the correct item quantity is reflected on checkout
+									ShopifyCheckoutSheetKit.invalidate()
+
+									CartManager.shared.updateQuantity(variant: node.id, quantity: node.quantity + 1, completionHandler: { cart in
+										CartManager.shared.cart = cart
+										updating = nil
+
+										if let url = cart?.checkoutUrl {
+											ShopifyCheckoutSheetKit.preload(checkout: url)
+										}
+									})
+								}, label: {
+									HStack {
+										Text("+").font(.title2)
+									}.frame(width: 20)
+								})
+							}
+						}
 					}
 				}.padding(.leading, 5)
 			}
 			.padding([.leading, .trailing], 10)
 			.frame(maxWidth: .infinity, alignment: .leading)
 		}
+	}
+}
+
+struct CartViewPreview: PreviewProvider {
+	static var previews: some View {
+		CartViewPreviewContent()
+	}
+}
+
+struct CartViewPreviewContent: View {
+	@State var isShowingCheckout = false
+	@State var checkoutURL: URL?
+	@State var isBusy: Bool = false
+	@StateObject var cartManager = CartManager.shared
+
+	init() {
+		cartManager.injectRandomCartItem()
+	}
+
+	var body: some View {
+		CartView(cartManager: CartManager.shared, checkoutURL: $checkoutURL, isShowingCheckout: $isShowingCheckout)
 	}
 }
